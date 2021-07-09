@@ -15,8 +15,12 @@ let readAll = false
 if (ws[`B1`] && ["YES","Y"].includes(ws[`B1`].v.toUpperCase())) {
   readAll = true
 }
+let overwrite = false
+if (ws[`D1`] && ["YES","Y"].includes(ws[`D1`].v.toUpperCase())) {
+  overwrite = true
+}
 
-let maxRow = 10000
+let maxRow = 200000
 let arrColl = []
 let arrCat = []
 if (readAll === true) {
@@ -58,13 +62,24 @@ if (readAll === true) {
 
 // read column AW app-id
 let arrIDApp = []
+let arrExistColl = []
+let arrExistCat = []
 for (i=2; i<=maxRow; i++) {
   if (ws2[`AW${i}`] === undefined) {
     break
   }
   arrIDApp.push(ws2[`AW${i}`].v)
+
+  if (arrExistColl.includes(ws2[`A${i}`].v) === false) {
+    arrExistColl.push(ws2[`A${i}`].v)    
+  }
+  if (arrExistCat.includes(ws2[`B${i}`].v) === false) {
+    arrExistCat.push(ws2[`B${i}`].v)
+  }
 }
 let nextFreeRow = i
+// console.log(arrExistColl)
+// console.log(arrExistCat)
 // console.log(arrIDApp.length)
 // console.log(nextFreeRow)
 // process.exit(1)
@@ -90,15 +105,23 @@ async function main () {
   // let rowNumber = 2
   let arrWorkedOn = []
   for (i=0; i<arrColl.length; i++) {  
-    console.log(`Working on Collection ${arrColl[i]} and Category ${arrCat[i]}...`)    
+    console.log(`Working on Collection ${arrColl[i]} and Category ${arrCat[i]}...`) 
+
+    if (overwrite === false && arrExistColl.includes(arrColl[i]) && arrExistCat.includes(arrCat[i])) {
+      console.log(`Combination ${arrColl[i]} and ${arrCat[i]} allready in excel - skipped...`) 
+      continue
+    }
+    
     let erg = await getStoreCollection(arrColl[i],arrCat[i])
+    console.log(`Data read...`)
     // console.log(erg)
     // console.log(`Check Erg: ${erg.values()}`)
     // console.log(erg[0])
     // console.log(Object.keys(erg[0]))
 
     if (erg === false || erg === undefined) {
-      console.log(`Working with this pair not possible - skipped...`)
+      console.log(`Working with this pair not possible - retry...`)
+      i--
       continue
     } else {           
       // console.log(`DEBUG Erg: ${erg}`)
@@ -107,6 +130,9 @@ async function main () {
       // console.log(Object.keys(erg[0]))
 
       for (entry in erg) {}
+  
+      console.log(`Write ${erg.length} elements to the excel... `)
+
       erg.forEach(function (item,index) {   
         // check if allready worked on in this run for the app-id
         if (!arrWorkedOn.includes(item.appId)) {
@@ -123,8 +149,6 @@ async function main () {
           XLSX.utils.sheet_add_aoa(ws2, [[arrColl[i]]], {origin: `A${rowNumber}`});
           XLSX.utils.sheet_add_aoa(ws2, [[arrCat[i]]], {origin: `B${rowNumber}`});
           XLSX.utils.sheet_add_aoa(ws2, [[item.title]], {origin: `C${rowNumber}`});
-          XLSX.utils.sheet_add_aoa(ws2, [[item.description]], {origin: `D${rowNumber}`});
-          XLSX.utils.sheet_add_aoa(ws2, [[item.descriptionHTML]], {origin: `E${rowNumber}`});
           XLSX.utils.sheet_add_aoa(ws2, [[item.summary]], {origin: `F${rowNumber}`});
           XLSX.utils.sheet_add_aoa(ws2, [[item.installs]], {origin: `G${rowNumber}`});
           XLSX.utils.sheet_add_aoa(ws2, [[item.minInstalls]], {origin: `H${rowNumber}`});
@@ -155,8 +179,7 @@ async function main () {
           XLSX.utils.sheet_add_aoa(ws2, [[item.familyGenre]], {origin: `AG${rowNumber}`});
           XLSX.utils.sheet_add_aoa(ws2, [[item.familyGenreId]], {origin: `AH${rowNumber}`});
           XLSX.utils.sheet_add_aoa(ws2, [[item.icon]], {origin: `AI${rowNumber}`});
-          XLSX.utils.sheet_add_aoa(ws2, [[item.headerImage]], {origin: `AJ${rowNumber}`});
-          XLSX.utils.sheet_add_aoa(ws2, [[item.screenshots.toString()]], {origin: `AK${rowNumber}`});
+          XLSX.utils.sheet_add_aoa(ws2, [[item.headerImage]], {origin: `AJ${rowNumber}`});          
           XLSX.utils.sheet_add_aoa(ws2, [[item.video]], {origin: `AL${rowNumber}`});
           XLSX.utils.sheet_add_aoa(ws2, [[item.videoImage]], {origin: `AM${rowNumber}`});
           XLSX.utils.sheet_add_aoa(ws2, [[item.contentRating]], {origin: `AN${rowNumber}`});
@@ -166,12 +189,18 @@ async function main () {
           XLSX.utils.sheet_add_aoa(ws2, [[Date(item.updated)]], {origin: `AR${rowNumber}`});
           XLSX.utils.sheet_add_aoa(ws2, [[item.version]], {origin: `AS${rowNumber}`});
           XLSX.utils.sheet_add_aoa(ws2, [[item.recentChanges]], {origin: `AT${rowNumber}`});
-          XLSX.utils.sheet_add_aoa(ws2, [[item.comments.toString()]], {origin: `AU${rowNumber}`});
           XLSX.utils.sheet_add_aoa(ws2, [[item.editorsChoice]], {origin: `AV${rowNumber}`});
           XLSX.utils.sheet_add_aoa(ws2, [[item.appId]], {origin: `AW${rowNumber}`});
           XLSX.utils.sheet_add_aoa(ws2, [[item.url]], {origin: `AX${rowNumber}`});
-        
-          console.log(`${item.appId} ${item.title} prepared for XLSX...`)
+
+
+          // XLSX.utils.sheet_add_aoa(ws2, [[item.description]], {origin: `D${rowNumber}`});
+          // XLSX.utils.sheet_add_aoa(ws2, [[item.descriptionHTML]], {origin: `E${rowNumber}`});   
+          // XLSX.utils.sheet_add_aoa(ws2, [[item.screenshots.toString()]], {origin: `AK${rowNumber}`});    
+          // XLSX.utils.sheet_add_aoa(ws2, [[item.comments.toString()]], {origin: `AU${rowNumber}`});   
+
+          
+          // console.log(`${item.appId} ${item.title} prepared for XLSX...`)
           arrWorkedOn.push(item.appId)
         }
 
